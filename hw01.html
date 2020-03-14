@@ -30,7 +30,7 @@ var theObject,object,texture;
 init();
 animate();
 
-function readModel(modelName='Future Car', targetSize = 10) {
+function readModel(modelName='car', targetSize = 10) {
 	
         var onProgress = function(xhr) {
           if (xhr.lengthComputable) {
@@ -41,14 +41,14 @@ function readModel(modelName='Future Car', targetSize = 10) {
 
         var onError = function(xhr) {};
         var mtlLoader = new THREE.MTLLoader();
-        mtlLoader.setPath('Future Car Test/');
+        mtlLoader.setPath('car Test/');
         mtlLoader.load(modelName + '.mtl', function(materials) {
 
           materials.preload();
 		
            var objLoader = new THREE.OBJLoader();
           objLoader.setMaterials(materials);
-          objLoader.setPath('Future Car Test/');
+          objLoader.setPath('car Test/');
           objLoader.load( modelName + '.obj', function(object) {
             unitize(object, targetSize);
             //theObject.add ( new THREE.BoxHelper (theObject) )
@@ -80,7 +80,7 @@ function unitize(object, targetSize) {
         var scaleSet = targetSize / objSize;
         theObject.add(object);
         object.scale.set(scaleSet, scaleSet, scaleSet);
-		object.rotation.set(Math.PI,Math.PI,0);
+		object.rotation.set(0,Math.PI,0);
         object.position.set(-center.x * scaleSet, -center.y * scaleSet+5, -center.z * scaleSet);
 
      }
@@ -119,7 +119,7 @@ function init() {
   ////////////////////////////////////////////////////////////////////////
   let loader = new THREE.TextureLoader();
         loader.crossOrigin = '';
-        texture = loader.load('https://i.imgur.com/q47UrQ3.jpg');
+        texture = loader.load('https://i.imgur.com/lEWW1Nx.jpg');
         texture.repeat.set(1, 1);
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
