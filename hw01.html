@@ -169,9 +169,9 @@ function render(){
   renderer.setViewport(0,0,WW/2,HH);
   camera.aspect=WW/2/HH;
   //camera.updateProjectionMatrix();
-  /*let cameraPos=car.localToWorld(new THREE.Vector3(-50,30,0));
+  let cameraPos=car.localToWorld(new THREE.Vector3(-50,30,0));
   camera.position.copy(cameraPos);
-  camera.lookAt(car.position);*/
+  camera.lookAt(car.position);
   renderer.render(scene, camera);	
   renderer.setViewport(WW/2,0,WW/2,HH);
   orthoCam.position.set (0,250,0);
