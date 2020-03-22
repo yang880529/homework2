@@ -18,7 +18,6 @@ body {
     <div id="info">ThreeJS Primer</div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/110/three.min.js"></script>
     <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
     <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
 	<script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/loaders/MTLLoader.js"></script>
     <script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/loaders/OBJLoader.js"></script>
@@ -31,39 +30,30 @@ init();
 animate();
 
 function readModel(modelName='car', targetSize = 10) {
-	
         var onProgress = function(xhr) {
           if (xhr.lengthComputable) {
             var percentComplete = xhr.loaded / xhr.total * 100;
             console.log(Math.round(percentComplete, 2) + '% downloaded');
           }
         };
-
         var onError = function(xhr) {};
         var mtlLoader = new THREE.MTLLoader();
         mtlLoader.setPath('car Test/');
         mtlLoader.load(modelName + '.mtl', function(materials) {
-
           materials.preload();
-		
            var objLoader = new THREE.OBJLoader();
           objLoader.setMaterials(materials);
           objLoader.setPath('car Test/');
           objLoader.load( modelName + '.obj', function(object) {
-            unitize(object, targetSize);
-            //theObject.add ( new THREE.BoxHelper (theObject) )
-           // theObject.name = 'OBJ'
-            //scene.add (theObject);
-			//theObject.setRotationFromEuler(new THREE.Euler(Math.PI/ 2, 0, -Math.PI/ 2, 'ZYX'))
-
+          unitize(object, targetSize);
+          //theObject.add ( new THREE.BoxHelper (theObject) )
+          // theObject.name = 'OBJ'
+          //scene.add (theObject);
+		  //theObject.setRotationFromEuler(new THREE.Euler(Math.PI/ 2, 0, -Math.PI/ 2, 'ZYX'))
           }, onProgress, onError);
-
-
         });
-
       }
 function unitize(object, targetSize) {
-		
         // find bounding box of 'object'
         var box3 = new THREE.Box3();
         box3.setFromObject(object);
@@ -71,10 +61,8 @@ function unitize(object, targetSize) {
         size.subVectors(box3.max, box3.min);
         var center = new THREE.Vector3();
         center.addVectors(box3.max, box3.min).multiplyScalar(0.5);
-
         //console.log ('center: ' + center.x + ', '+center.y + ', '+center.z );
         //console.log ('size: ' + size.x + ', ' +  size.y + ', '+size.z );
-
         // uniform scaling according to objSize
         var objSize = Math.max(size.x, size.y, size.z);
         var scaleSet = targetSize / objSize;
@@ -82,7 +70,6 @@ function unitize(object, targetSize) {
         object.scale.set(scaleSet, scaleSet, scaleSet);
 		object.rotation.set(0,Math.PI,0);
         object.position.set(-center.x * scaleSet, -center.y * scaleSet+5, -center.z * scaleSet);
-
      }
 function loadCubemap() {
 	var path = 'background/';
@@ -117,16 +104,38 @@ function init() {
   controls.enableKeys = false;
   document.body.appendChild(renderer.domElement);
   ////////////////////////////////////////////////////////////////////////
-  let loader = new THREE.TextureLoader();
-        loader.crossOrigin = '';
-        texture = loader.load('https://i.imgur.com/lEWW1Nx.jpg');
-        texture.repeat.set(1, 1);
-        texture.wrapS = THREE.RepeatWrapping;
-        texture.wrapT = THREE.RepeatWrapping;
-        mesh1 = new THREE.Mesh(new THREE.PlaneGeometry(200, 200),new THREE.MeshBasicMaterial({
-        map: texture}));
-        mesh1.rotation.x = -Math.PI / 2;
-        scene.add(mesh1);
+    var geometry = new THREE.CylinderBufferGeometry( 5, 5, 20, 32 );
+    var material = new THREE.MeshPhongMaterial( {color: 0xffea00} );
+    cylinder = new THREE.Mesh( geometry, material );
+    cylinder.position.set(25,10,20);
+    scene.add( cylinder );
+  
+    var geometry = new THREE.CylinderBufferGeometry( 5, 5, 10, 32 );
+    var material = new THREE.MeshPhongMaterial( {color: 0xff00} );
+    cylinder = new THREE.Mesh( geometry, material );
+    cylinder.position.set(-20,5,20);
+    scene.add( cylinder );
+	
+	var geometry = new THREE.BoxGeometry(10,10,10);
+    var material = new THREE.MeshPhongMaterial( {color: 0x00ffff} );
+    box = new THREE.Mesh( geometry, material );
+    box.position.set(-20,5,-40);
+    scene.add( box );
+	
+	var geometry = new THREE.BoxGeometry(10,10,10);
+	var material = new THREE.MeshPhongMaterial( {color: 0x0000ff} );
+	box = new THREE.Mesh( geometry, material );
+	scene.add( box );
+	
+	let loader = new THREE.TextureLoader();
+    loader.crossOrigin = '';
+    texture = loader.load('https://i.imgur.com/q47UrQ3.jpg');
+    texture.repeat.set(1, 1);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    mesh1 = new THREE.Mesh(new THREE.PlaneGeometry(200, 200),new THREE.MeshBasicMaterial({map: texture}));
+    mesh1.rotation.x = -Math.PI / 2;
+    scene.add(mesh1);
 	loadCubemap();
 	renderer.autoClear = false;
 	theObject = new THREE.Object3D();
@@ -160,15 +169,14 @@ function render(){
   renderer.setViewport(0,0,WW/2,HH);
   camera.aspect=WW/2/HH;
   //camera.updateProjectionMatrix();
-  let cameraPos=car.localToWorld(new THREE.Vector3(-50,30,0));
+  /*let cameraPos=car.localToWorld(new THREE.Vector3(-50,30,0));
   camera.position.copy(cameraPos);
-  camera.lookAt(car.position);
-	renderer.render(scene, camera);	
-  
+  camera.lookAt(car.position);*/
+  renderer.render(scene, camera);	
   renderer.setViewport(WW/2,0,WW/2,HH);
-  orthoCam.position.set (car.position.x,50,car.position.z);
-  orthoCam.up.set(1,0,0);
-  orthoCam.lookAt(car.position);
+  orthoCam.position.set (0,250,0);
+  //orthoCam.up.set(1,0,0);
+  orthoCam.lookAt(0,0,0);
   renderer.render(scene,orthoCam);	
 }
 
