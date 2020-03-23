@@ -100,7 +100,8 @@ function init() {
   renderer = new THREE.WebGLRenderer();
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setClearColor(0x888888);
-  var controls = new THREE.OrbitControls(camera, renderer.domElement);
+  orthoCam.position.set (0,250,0);
+  var controls = new THREE.OrbitControls(orthoCam, renderer.domElement);
   controls.enableKeys = false;
   document.body.appendChild(renderer.domElement);
   ////////////////////////////////////////////////////////////////////////
@@ -174,9 +175,7 @@ function render(){
   camera.lookAt(car.position);
   renderer.render(scene, camera);	
   renderer.setViewport(WW/2,0,WW/2,HH);
-  orthoCam.position.set (0,250,0);
   //orthoCam.up.set(1,0,0);
-  orthoCam.lookAt(0,0,0);
   renderer.render(scene,orthoCam);	
 }
 
