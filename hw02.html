@@ -1,0 +1,433 @@
+<html>
+<head>
+<style>
+#info {
+		position: absolute;
+    width: 100%;
+		font-family: Monospace;
+		font-size: 20px;
+		padding: 5px;
+		text-align: center;
+		color: #003333;
+}
+a {color:blue}
+
+body {
+  overflow: hidden;
+}
+
+</style>
+</head>
+
+<body>
+<div id="info"> 
+	 <br>Game physics and sound(<a href="javascript:toggle();">dimmer</a>)<br>
+	<button id="play" style="width:20%">Play</button> 
+  </div>
+<audio id="collisionsound" style="display:none">
+<source src="https://jyunming-chen.github.io/game3js/gameHWhelpers/sounds/collision3.wav" type="audio/wav">
+</audio>
+<audio id="soundtrack" autoplay="" loop="" style="display:none">
+<source src="https://jyunming-chen.github.io/game3js/gameHWhelpers/sounds/KennyG.mp3" type="audio/mp3">
+</audio>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/110/three.min.js"></script>
+<script src="https://threejs.org/build/three.min.js"></script>
+<script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+<script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+<script>
+$('#play').click(function() {
+  isPaused = !isPaused;
+  if (isPaused) {
+    $('#play').text('Play')
+    soundTrack.pause()
+  } else {
+    $('#play').text('Pause')
+    soundTrack.play()
+  }
+});
+
+var camera, scene, renderer;
+var pos, vel, force, wall, movewall, movewall2;
+var walls = [],
+  balls = [],
+  color = "";
+var isDimming = false,
+  soundVal = 1.0,
+  sign = 1.0,
+  isPaused = false;
+var collisionSound, soundTrack;
+var lock = 1,
+  lock2 = 1,
+  point, normal;
+
+class Wall {
+  constructor(x, y, z, point, normal) {
+    this.x = x;
+    this.y = y;
+    this.z = z;
+    this.point = point;
+    this.normal = normal;
+    this.mesh = new THREE.Mesh(new THREE.BoxGeometry(this.x, this.y, this.z), new THREE.MeshLambertMaterial({
+      color: 0x42fff2,
+      opacity: 0.2,
+      transparent: true
+    }));
+  }
+}
+
+class Ball {
+  constructor(mesh, light) {
+    this.mesh = mesh;
+    this.w = (Math.random() * 20);
+    this.x = (Math.random() * 20);
+    this.y = 80 - (Math.random() * 160);
+    this.z = 80 - (Math.random() * 160);
+    this.force = new THREE.Vector3(0, 0, 0);
+    this.vel = new THREE.Vector3(this.w, 0, this.x);
+    this.pos = new THREE.Vector3(this.y, 2, this.z);
+    this.light = light;
+  }
+}
+
+
+init();
+animate();
+
+function toggle() {
+  isDimming = !isDimming;
+  sign = isDimming ? -1 : 1;
+}
+
+
+
+function init() {
+  collisionSound = document.getElementById('collisionsound');
+  soundTrack = document.getElementById('soundtrack');
+  scene = new THREE.Scene();
+
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x888888);
+  document.body.appendChild(renderer.domElement);
+
+  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1000);
+  camera.position.z = 500;
+  camera.position.y = 200;
+  let controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+
+
+  var light = new THREE.AmbientLight(0x202020); // soft white light
+  scene.add(light);
+
+  ////////////////////////////////////////////////////////////////
+  var gridXZ = new THREE.GridHelper(200, 20, 'red', 'white');
+  //scene.add(gridXZ);
+
+  var floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshPhongMaterial());
+  scene.add(floor);
+  floor.rotation.x = -Math.PI / 2;
+
+  for (i = 0; i < 5; i++) {
+    var color = Math.floor(Math.random() * Math.pow(256, 3)).toString(16);
+    while (color.length < 6) {
+      color = "0" + color;
+    }
+    var puck = new THREE.Mesh(new THREE.CylinderGeometry(10, 10, 4, 20), new THREE.MeshBasicMaterial({
+      color: "#" + color
+    }));
+    var pucklight = new THREE.PointLight("#" + color, 1, 100);
+    var puck1 = new Ball(puck, pucklight);
+    scene.add(puck1.mesh, puck1.light);
+    balls.push(puck1);
+    //light.position.set( 50, 50, 50 );
+  }
+
+
+  let point1 = new THREE.Vector3(100, 0, 0);
+  let normal1 = new THREE.Vector3(-1, 0, 0);
+  a = new Wall(10, 20, 200, point1, normal1);
+  scene.add(a.mesh);
+  a.mesh.position.set(105, 10, 0);
+  walls.push(a);
+  point1 = new THREE.Vector3(-100, 0, 0);
+  normal1 = new THREE.Vector3(1, 0, 0);
+  b = new Wall(10, 20, 200, point1, normal1);
+  scene.add(b.mesh);
+  b.mesh.position.set(-105, 10, 0);
+  walls.push(b);
+  point1 = new THREE.Vector3(0, 0, 100);
+  normal1 = new THREE.Vector3(0, 0, -1);
+  c = new Wall(200, 20, 10, point1, normal1);
+  scene.add(c.mesh);
+  c.mesh.position.set(0, 10, 105);
+  walls.push(c);
+  point1 = new THREE.Vector3(0, 0, -100);
+  normal1 = new THREE.Vector3(0, 0, 1);
+  d = new Wall(200, 20, 10, point1, normal1);
+  scene.add(d.mesh);
+  d.mesh.position.set(0, 10, -105);
+  walls.push(d);
+  var color = Math.floor(Math.random() * Math.pow(256, 3)).toString(16);
+  while (color.length < 6) {
+    color = "0" + color;
+  }
+  movewall = new THREE.Mesh(new THREE.BoxGeometry(40, 20, 10), new THREE.MeshLambertMaterial({
+    color: "#" + color
+  }));
+  movewall.point = new THREE.Vector3();
+  movewall.normal = new THREE.Vector3();
+  movewall.position.set(0, 10, 0);
+  scene.add(movewall);
+  color = Math.floor(Math.random() * Math.pow(256, 3)).toString(16);
+  movewall2 = new THREE.Mesh(new THREE.BoxGeometry(10, 20, 40), new THREE.MeshLambertMaterial({
+    color: "#" + color
+  }));
+  movewall2.point = new THREE.Vector3();
+  movewall2.normal = new THREE.Vector3();
+  movewall2.position.set(0, 10, 65);
+  scene.add(movewall2);
+
+  //////////////////
+  light = new THREE.PointLight(0x888888, 1, );
+  light.position.set(0, 50, 0);
+  scene.add(light);
+}
+
+function makewall(movewall) {
+  let moveingwall = {};
+  moveingwall.max = movewall.localToWorld(new THREE.Vector3(20, 0, 5));
+  moveingwall.min = movewall.localToWorld(new THREE.Vector3(-20, 0, -5));
+  return moveingwall;
+}
+
+function makewall2(movewall2) {
+  let moveingwall = {};
+  moveingwall.max = movewall2.localToWorld(new THREE.Vector3(5, 0, 20));
+  moveingwall.min = movewall2.localToWorld(new THREE.Vector3(-5, 0, -20));
+  return moveingwall;
+}
+
+
+function objectCopy(src) {
+  return JSON.parse(JSON.stringify(src));
+}
+
+function Check_Intersect(Rect, C, Rad) {
+  const Rad2 = Rad * Rad;
+
+  /* Translate coordinates, placing C at the origin. */
+  // duplicate R object here for computation ...
+  let R;
+  R = objectCopy(Rect);
+
+  R.max.x -= C.pos.x;
+  R.max.z -= C.pos.z;
+  R.min.x -= C.pos.x;
+  R.min.z -= C.pos.z;
+
+
+  if (R.max.x < 0) {
+    check = 3; /* R to left of circle center */
+    if (R.max.z < 0)
+      /* R in lower left corner */
+      return ((R.max.x * R.max.x + R.max.z * R.max.z) < Rad2);
+    else if (R.min.z > 0)
+      /* R in upper left corner */
+      return ((R.max.x * R.max.x + R.min.z * R.min.z) < Rad2);
+    else /* R due West of circle */
+      return (Math.abs(R.max.x) < Rad);
+  } else if (R.min.x > 0) {
+    check = 4; /* R to right of circle center */
+    if (R.max.z < 0) /* R in lower right corner */
+      return ((R.min.x * R.min.x + R.max.z * R.max.z) < Rad2);
+    else if (R.min.z > 0) /* R in upper right corner */
+      return ((R.min.x * R.min.x + R.min.z * R.min.z) < Rad2);
+    else /* R due East of circle */
+      return (Math.abs(R.min.x) < Rad);
+  } else /* R on circle vertical centerline */
+    if (R.max.z < 0) {
+      check = 2; /* R due South of circle */
+      return (Math.abs(R.max.z) < Rad);
+    }
+  else if (R.min.z > 0) {
+    check = 1; /* R due North of circle */
+    return (Math.abs(R.min.z) < Rad);
+  } else /* R contains circle centerpoint */
+    return (true);
+}
+
+
+function animate() {
+  var dt = 0.1;
+  var eps = 1e-3; // 0.001 
+  var cR = 1.0;
+  // Euler's method
+  //////////////////////////////
+  speed = 1;
+
+  if (lock == 1) {
+    movewall.position.x += speed;
+    if (movewall.position.x > 65) lock = 0;
+  } else {
+    movewall.position.x -= speed;
+    if (movewall.position.x < -65) lock = 1;
+  }
+
+  if (lock2 == 1) {
+    movewall2.position.z += speed;
+    if (movewall2.position.z > 65) lock2 = 0;
+  } else {
+    movewall2.position.z -= speed;
+    if (movewall2.position.z < -65) lock2 = 1;
+  }
+
+  ////////////////////////////////////////////
+
+  soundVal += sign * 0.01;
+  soundVal = THREE.Math.clamp(soundVal, 0, 1);
+  soundtrack.volume = soundVal;
+  //////////////////////////////////////////////
+
+
+  for (j = 0; j < balls.length; j++) {
+    balls[j].vel.add(balls[j].force.clone().multiplyScalar(dt));
+    balls[j].pos.add(balls[j].vel.clone().multiplyScalar(dt));
+    balls[j].mesh.position.copy(balls[j].pos);
+    balls[j].light.position.copy(balls[j].pos);
+    balls[j].light.position.y += 10;
+  }
+  for (i = 0; i < balls.length - 1; i++) {
+    for (j = i + 1; j < balls.length; j++) {
+      a = balls[i].pos.x;
+      b = balls[j].pos.x;
+      c = balls[i].vel.x;
+      d = balls[j].vel.x;
+      e = balls[i].pos.z;
+      f = balls[j].pos.z;
+      g = balls[i].vel.z;
+      h = balls[j].vel.z;
+      l = (a - b) * (a - b) + (e - f) * (e - f);
+      m = (b - a) * (b - a) + (f - e) * (f - e);
+      x = (c - d) * (a - b) + (g - h) * (e - f);
+      y = (d - c) * (b - a) + (h - g) * (f - e);
+      if (Math.sqrt(l) < eps + 20) {
+        collisionSound.play();
+        balls[i].vel.x = c - x / l * (a - b);
+        balls[i].vel.z = g - x / l * (e - f);
+        balls[j].vel.x = d - y / m * (b - a);
+        balls[j].vel.z = h - y / m * (f - e);
+        var dis = balls[j].pos.clone().sub(balls[i].pos);
+        t = dis.clone().normalize();
+        var distan = balls[j].pos.clone().distanceTo(balls[i].pos);
+        var dd = (20 - distan) / 2;
+        balls[i].pos.copy(balls[i].pos.clone().sub(t.clone().multiplyScalar(dd)));
+        balls[j].pos.copy(balls[j].pos.clone().add(t.clone().multiplyScalar(dd)));
+      }
+    }
+  }
+  //////////////////////////////////////////////////////////////////
+
+
+  for (j = 0; j < balls.length; j++) {
+    for (i = 0; i < walls.length; i++) {
+      let wall = walls[i];
+      if ((balls[j].pos.clone().sub(wall.point).dot(wall.normal) < eps + 10)) {
+        collisionSound.play();
+        var vN = wall.normal.clone().multiplyScalar(balls[j].vel.dot(wall.normal));
+        var vT = balls[j].vel.clone().sub(vN);
+        // vel = vT + (- CR).vN
+        balls[j].vel.copy(vT.add(vN.multiplyScalar(-cR)));
+        balls[j].pos = balls[j].pos.clone().add(wall.normal.clone().multiplyScalar(10 - ((balls[j].pos.clone().sub(wall.point)).dot(wall.normal.clone()))));
+      }
+    }
+  }
+
+  ///////////////////////////////////////////////////////////////////////////  
+  for (j = 0; j < balls.length; j++) {
+    let moveingwall = makewall(movewall);
+    if (Check_Intersect(moveingwall, balls[j], 5)) {
+      let pointm, normalm;
+      if (check == 1) {
+        up = movewall.localToWorld(new THREE.Vector3(0, 0, -5));
+        pointm = new THREE.Vector3(0, 0, up.z);
+        normalm = new THREE.Vector3(0, 0, -1);
+      }
+      if (check == 2) {
+        down = movewall.localToWorld(new THREE.Vector3(0, 0, 5));
+        pointm = new THREE.Vector3(0, 0, down.z);
+        normalm = new THREE.Vector3(0, 0, 1);
+      }
+      if (check == 3) {
+        right = movewall.localToWorld(new THREE.Vector3(20, 0, 0));
+        pointm = new THREE.Vector3(right.x, 0, 0);
+        normalm = new THREE.Vector3(1, 0, 0);
+      }
+      if (check == 4) {
+        left = movewall.localToWorld(new THREE.Vector3(-20, 0, 0));
+        pointm = new THREE.Vector3(left.x, 0, 0);
+        normalm = new THREE.Vector3(-1, 0, 0);
+      }
+      let wall = movewall;
+      wall.normal.copy(normalm);
+      wall.point.copy(pointm);
+      collisionSound.play();
+      var vN = wall.normal.clone().multiplyScalar(balls[j].vel.dot(wall.normal));
+      var vT = balls[j].vel.clone().sub(vN);
+      // vel = vT + (- CR).vN
+      balls[j].vel.copy(vT.add(vN.multiplyScalar(-cR)));
+      balls[j].pos = balls[j].pos.clone().add(wall.normal.clone().multiplyScalar(10 - ((balls[j].pos.clone().sub(wall.point)).dot(wall.normal.clone()))));
+    }
+  }
+
+  for (j = 0; j < balls.length; j++) {
+    let moveingwall = makewall2(movewall2);
+    if (Check_Intersect(moveingwall, balls[j], 5)) {
+      let pointm, normalm;
+      if (check == 1) {
+        up = movewall2.localToWorld(new THREE.Vector3(0, 0, -20));
+        pointm = new THREE.Vector3(0, 0, up.z);
+        normalm = new THREE.Vector3(0, 0, -1);
+      }
+      if (check == 2) {
+        down = movewall2.localToWorld(new THREE.Vector3(0, 0, 20));
+        pointm = new THREE.Vector3(0, 0, down.z);
+        normalm = new THREE.Vector3(0, 0, 1);
+      }
+      if (check == 4) {
+        left = movewall2.localToWorld(new THREE.Vector3(-5, 0, 0));
+        pointm = new THREE.Vector3(left.x, 0, 0);
+        normalm = new THREE.Vector3(-1, 0, 0);
+      }
+      if (check == 3) {
+        right = movewall2.localToWorld(new THREE.Vector3(5, 0, 0));
+        pointm = new THREE.Vector3(right.x, 0, 0);
+        normalm = new THREE.Vector3(1, 0, 0);
+      }
+      let wall = movewall2;
+      wall.normal.copy(normalm);
+      wall.point.copy(pointm);
+      collisionSound.play();
+      var vN = wall.normal.clone().multiplyScalar(balls[j].vel.dot(wall.normal));
+      var vT = balls[j].vel.clone().sub(vN);
+      // vel = vT + (- CR).vN
+      balls[j].vel.copy(vT.add(vN.multiplyScalar(-cR)));
+      balls[j].pos = balls[j].pos.clone().add(wall.normal.clone().multiplyScalar(10 - ((balls[j].pos.clone().sub(wall.point)).dot(wall.normal.clone()))));
+    }
+  }
+
+  requestAnimationFrame(animate);
+  render();
+
+}
+
+function render() {
+  renderer.render(scene, camera);
+}
+
+
+</script>
+</body>
+
+</html>
+
