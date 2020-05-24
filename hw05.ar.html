@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+<!-- three.js library -->
+<script src='https://yang880529.github.io/example/three.js/build/three.min.js'></script>
+<!-- ar.js -->
+<script src="https://yang880529.github.io/example/build/ar.js"></script>
+<script>THREEx.ArToolkitContext.baseURL = 'https://yang880529.github.io/example'</script>
+<div id="info">Agent (Seek, Arrival, Collision)</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/107/three.min.js"></script>
+<script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+<script>
+class Obstacle {
+	constructor (center,size) {
+		this.center = center.clone();  
+		this.mesh = new THREE.Mesh (new THREE.CylinderGeometry(size,size,50/240,20),
+			new THREE.MeshBasicMaterial());
+		this.mesh.position.copy (center);
+    this.mesh.position.y=25/240;
+		this.size = size;
+    scene.add (this.mesh)
+	}
+}
+
+
+var Obstacles=[],a;
+var number;
+
+class Agent {
+  constructor(pos, mesh) {
+    this.pos = pos.clone();
+    this.vel = new THREE.Vector3();
+    this.force = new THREE.Vector3();
+    this.target = new THREE.Vector3();
+    this.size = 3/240;  // half width
+    this.mesh = mesh;
+    this.MAXSPEED = 70/240;
+    this.ARRIVAL_R = 30/240;
+    //this.nbhd = [];
+    
+    // for orientable agent
+    this.angle = 0;
+  }
+  update(dt) {
+    this.accumulateForce();
+//    this.vel.add(this.force.clone().multiplyScalar(dt));
+       		var min=200;
+  for(var i=0;i<3;i++){
+      if(min>this.pos.distanceTo(Obstacles[i].center)){
+      	min=this.pos.distanceTo(Obstacles[i].center);
+        a=i;
+      }
+   }
+	// collision
+	let vhat = this.vel.clone().normalize();
+	let point = Obstacles[a].center.clone().sub (this.pos) // c-p
+	let proj  = point.dot(vhat);
+const REACH = 50/240;
+const K = 5
+	if (proj > 0 && proj < REACH) {
+		let perp = new THREE.Vector3();
+		perp.subVectors (point, vhat.clone().setLength(proj));
+		let overlap = Obstacles[a].size + this.size - perp.length()
+    if (overlap > 0) {
+			perp.setLength (K*overlap);
+			perp.negate()
+      this.force.add (perp);
+			//console.log ("hit:", perp);
+		}
+	}
+  
+  this.vel.add(this.force.clone().multiplyScalar(dt));
+
+    
+    // velocity modulation
+    let diff = this.target.clone().sub(this.pos)
+    let dst = diff.length();
+    if (dst < this.ARRIVAL_R) {
+      this.vel.setLength(dst)
+    }
+    
+    
+    this.pos.add(this.vel.clone().multiplyScalar(dt))
+    this.mesh.position.copy(this.pos)
+    
+    // for orientable agent
+    // non PD version
+    if (this.vel.length() > 0.1/240) {
+	    	this.angle = Math.atan2 (-this.vel.z, this.vel.x)
+    		this.mesh.rotation.y = this.angle
+   	}
+    
+   	if((this.pos.x<=target.position.x+3/240&&this.pos.x>=target.position.x-3/240)&&(this.pos.y<=target.position.y+3/240&&this.pos.y>=target.position.y-3/240)&&(this.pos.z<=target.position.z+3/240&&this.pos.z>=target.position.z-3/240)){
+      buildtarget();
+      agent.setTarget(number);
+      agent2.setTarget(number);
+      }
+  
+  }
+
+  setTarget(target) {
+    this.target.copy(target)
+  }
+  targetInducedForce(targetPos) {
+    return targetPos.clone().sub(this.pos).normalize().multiplyScalar(this.MAXSPEED).sub(this.vel)
+  }
+
+  accumulateForce() {
+    // seek
+    this.force.copy(this.targetInducedForce(this.target));
+  }
+
+}
+
+function buildtarget() {
+	scene.remove(target);
+	var geometry = new THREE.CircleBufferGeometry( 3/240, 32 );
+	var material = new THREE.MeshBasicMaterial( { color: 0xffc800,side:THREE.DoubleSide});
+  target = new THREE.Mesh( geometry, material );
+  number=new THREE.Vector3();
+  while(1){
+    number.x=(90-(Math.random()*180))/240;
+    number.z=(90-(Math.random()*180))/240;
+    if((number.x>55/240||number.x<45/240)&&(number.x>-45/240||number.x<-55/240)&&(number.x>5/240||number.x<-5/240)&&(number.z>55/240||number.z<45/240)&&(number.z>-45/240||number.z<-55/240)) break;
+  }
+  target.position.set (number.x,1/240,number.z);
+  target.rotation.x=-Math.PI/2;
+  scene.add(target);
+}
+
+
+
+////////////////////
+var camera, scene, renderer;
+var puck;
+
+var raycaster;
+var mouse = new THREE.Vector2();
+var pickables = [];
+var ob,target;
+
+
+
+
+
+function agentMesh () {
+	// mesh facing +x
+	let geometry = new THREE.Geometry();
+  geometry.vertices.push (new THREE.Vector3(10/240,0,0))
+  geometry.vertices.push (new THREE.Vector3(0,0,-3/240))
+  geometry.vertices.push (new THREE.Vector3(0,0,3/240))
+  geometry.vertices.push (new THREE.Vector3(0,3/240,0))
+  
+  geometry.faces.push(new THREE.Face3(0, 3, 2));
+  geometry.faces.push(new THREE.Face3(0, 2, 1));
+  geometry.faces.push(new THREE.Face3(1, 3, 0));
+  geometry.faces.push(new THREE.Face3(1, 2, 3));
+	geometry.computeFaceNormals()
+	return new THREE.Mesh (geometry, 
+  //new THREE.MeshNormalMaterial());
+  new THREE.MeshBasicMaterial({color:'cyan', wireframe:true}))  
+}
+
+
+
+
+
+	//////////////////////////////////////////////////////////////////////////////////
+	//		Init
+	//////////////////////////////////////////////////////////////////////////////////
+
+	// init renderer
+	var renderer	= new THREE.WebGLRenderer({
+		antialias: true,
+		alpha: true
+	});
+	renderer.setClearColor(new THREE.Color('lightgrey'), 0)
+	renderer.setSize( 640, 480 );
+	renderer.domElement.style.position = 'absolute'
+	renderer.domElement.style.top = '0px'
+	renderer.domElement.style.left = '0px'
+	document.body.appendChild( renderer.domElement );
+
+	// array of functions for the rendering loop
+	var onRenderFcts= [];
+
+	// init scene and camera
+	var scene	= new THREE.Scene();
+		
+	//////////////////////////////////////////////////////////////////////////////////
+	//		Initialize a basic camera
+	//////////////////////////////////////////////////////////////////////////////////
+
+	// Create a camera
+	var camera = new THREE.Camera();
+	scene.add(camera);
+
+	////////////////////////////////////////////////////////////////////////////////
+	//          handle arToolkitSource
+	////////////////////////////////////////////////////////////////////////////////
+
+	var arToolkitSource = new THREEx.ArToolkitSource({
+		// to read from the webcam 
+		sourceType : 'webcam',
+		
+		// // to read from an image
+		// sourceType : 'image',
+		// sourceUrl : THREEx.ArToolkitContext.baseURL + '../data/images/img.jpg',		
+
+		// to read from a video
+		// sourceType : 'video',
+		// sourceUrl : THREEx.ArToolkitContext.baseURL + '../data/videos/headtracking.mp4',		
+	})
+
+	arToolkitSource.init(function onReady(){
+		onResize()
+	})
+	
+	// handle resize
+	window.addEventListener('resize', function(){
+		onResize()
+	})
+	function onResize(){
+		arToolkitSource.onResize()	
+		arToolkitSource.copySizeTo(renderer.domElement)	
+		if( arToolkitContext.arController !== null ){
+			arToolkitSource.copySizeTo(arToolkitContext.arController.canvas)	
+		}	
+	}
+	////////////////////////////////////////////////////////////////////////////////
+	//          initialize arToolkitContext
+	////////////////////////////////////////////////////////////////////////////////
+	
+
+	// create atToolkitContext
+	var arToolkitContext = new THREEx.ArToolkitContext({
+		cameraParametersUrl: THREEx.ArToolkitContext.baseURL + '/data/data/camera_para.dat',
+		detectionMode: 'mono',
+	})
+	// initialize it
+	arToolkitContext.init(function onCompleted(){
+		// copy projection matrix to camera
+		camera.projectionMatrix.copy( arToolkitContext.getProjectionMatrix() );
+	})
+
+	// update artoolkit on every frame
+	onRenderFcts.push(function(){
+		if( arToolkitSource.ready === false )	return
+
+		arToolkitContext.update( arToolkitSource.domElement )
+		
+		// update scene.visible if the marker is seen
+		scene.visible = camera.visible
+	})
+		
+	////////////////////////////////////////////////////////////////////////////////
+	//          Create a ArMarkerControls
+	////////////////////////////////////////////////////////////////////////////////
+	
+	// init controls for camera
+	var markerControls = new THREEx.ArMarkerControls(arToolkitContext, camera, {
+		type : 'pattern',
+		patternUrl : THREEx.ArToolkitContext.baseURL + '/data/data/patt.hiro',
+		// patternUrl : THREEx.ArToolkitContext.baseURL + '../data/data/patt.kanji',
+		// as we controls the camera, set changeMatrixMode: 'cameraTransformMatrix'
+		changeMatrixMode: 'cameraTransformMatrix'
+	})
+	// as we do changeMatrixMode: 'cameraTransformMatrix', start with invisible scene
+	scene.visible = false
+
+	//////////////////////////////////////////////////////////////////////////////////
+	//		add an object in the scene
+	//////////////////////////////////////////////////////////////////////////////////
+
+	// add a torus knot	
+
+  /////////////////////////////////////////////////////////////////////
+  plane = new THREE.Mesh(new THREE.PlaneGeometry(240/240, 240/240), new THREE.MeshBasicMaterial({
+    transparent: true,
+    opacity: 0.5,
+    visible: true
+  }));
+  scene.add(plane);
+  //plane.material.visible = false
+  plane.rotation.x = -Math.PI / 2;
+  pickables = [plane];
+
+
+//  tex2 = loader.load ("https://i.imgur.com/HBZ38p5.jpg")
+//  scene.background = tex2
+
+  ////////////////////////
+		let mesh = agentMesh ();
+    agent = new Agent(new THREE.Vector3(-100/240 + 200/240 * Math.random(), 0, -100/240 + 200/240 * Math.random()), mesh);
+    scene.add(mesh)
+  
+  
+  let mesh2 = agentMesh ();
+    agent2 = new Agent(new THREE.Vector3(-100/240 + 200/240 * Math.random(), 0, -100/240 + 200/240 * Math.random()), mesh2);
+    scene.add(mesh2)
+  
+//    pdControl = new PDControllerR2();
+ 	buildtarget();
+	ob = new Obstacle (new THREE.Vector3(50/240,0,50/240), 10/240)
+  ob2 = new Obstacle (new THREE.Vector3(-50/240,0,50/240), 10/240)
+  ob3 = new Obstacle (new THREE.Vector3(0,0,-50/240), 10/240)
+  Obstacles.push(ob);
+  Obstacles.push(ob2);
+  Obstacles.push(ob3);
+  // find intersections
+
+  agent.setTarget(number);
+	agent2.setTarget(number);
+
+
+	//////////////////////////////////////////////////////////////////////////////////
+	//		render the whole thing on the page
+	//////////////////////////////////////////////////////////////////////////////////
+
+	// render the scene
+	onRenderFcts.push(function(){
+		renderer.render( scene, camera );
+	})
+
+	// run the rendering loop
+	var lastTimeMsec= null
+	requestAnimationFrame(function animate(nowMsec){
+		// keep looping
+		requestAnimationFrame( animate );
+		// measure time
+		lastTimeMsec	= lastTimeMsec || nowMsec-1000/60
+		var deltaMsec	= Math.min(200, nowMsec - lastTimeMsec)
+		lastTimeMsec	= nowMsec
+		// call each update function
+		agent.update(0.01)
+		agent2.update(0.013)
+		onRenderFcts.forEach(function(onRenderFct){
+			onRenderFct(deltaMsec/1000, nowMsec/1000)
+		})
+	})
+</script></body>
